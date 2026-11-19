@@ -1,0 +1,5 @@
+.cache/
+artifacts/
+build-local.sh
+*.img
+*.zip

@@ -36,3 +36,13 @@ The workflow uploads:
 
 Repack the image into a suitable boot image before flashing. Never flash a bare
 `Image.lz4-dtb` directly to `boot_a`.
+
+## CI scope and verification
+
+The workflow fetches the exact upstream kernel and both GCC commits. It uses the
+original panel node, not a new virtual display. A successful build verifies the
+LZ4 payload and that the compiled sailfish DTBs were appended; it does **not**
+prove that Android, HWC, ADB, or scrcpy works without the panel. Build logs are
+available even on compilation failure. CI needs no personal token, device
+backup, boot image, or signing key. The downloadable image is a **kernel**, not
+a flashable boot image. Repack separately with a matching device boot image.
