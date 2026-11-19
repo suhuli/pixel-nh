@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local>
+Date: Thu, 19 Nov 2026 00:00:00 +0800
+Subject: [PATCH] sailfish: force simulated DSI panel for headless boot
+
+The Pixel bootloader always appends the real sailfish panel name to the
+kernel command line, so a boot-image override is ignored. Force the
+matching panel into SIM_SW_TE_MODE after DT lookup so panel reads, ACK
+waits, ESD checks, and hardware TE waits do not block without a display.
+
+This still registers a valid MDSS display 0 for SurfaceFlinger/HWC.
+---
+ drivers/video/msm/mdss/mdss_dsi.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/drivers/video/msm/mdss/mdss_dsi.c b/drivers/video/msm/mdss/mdss_dsi.c
+--- a/drivers/video/msm/mdss/mdss_dsi.c
++++ b/drivers/video/msm/mdss/mdss_dsi.c
+@@ -2791,5 +2791,12 @@ static struct device_node *mdss_dsi_find_panel_of_node(
+ 			goto end;
+ 		} else {
++			if (!strcmp(panel_name,
++				"qcom,mdss_dsi_samsung_ea8064tg_1080p_cmd")) {
++				pinfo->sim_panel_mode = SIM_SW_TE_MODE;
++				pr_info("%s: forcing sailfish SIM_SW_TE_MODE\n",
++					__func__);
++			}
++
+ 			/* extract config node name if present */
+ 			str1 += i;
+ 			str2 = strnstr(str1, "config", strlen(str1));

@@ -1,0 +1,97 @@
+name: Build sailfish headless kernel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-kernel.yml"
+      - "0001-sailfish-force-sim-swte.patch"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: ubuntu:20.04
+      options: --user root
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y \
+            bc bison build-essential ccache curl flex git gnupg gperf \
+            lib32ncurses5-dev lib32readline-dev lib32z1-dev libelf-dev \
+            liblz4-tool libncurses5 libssl-dev libxml2 libxml2-utils \
+            lzop pngcrush python2.7 rsync schedtool squashfs-tools \
+            xsltproc zip zlib1g-dev
+
+      - name: Fetch exact kernel and toolchains
+        run: |
+          git clone --depth 1 \
+            --branch android-msm-marlin-3.18-oreo-m4 \
+            https://android.googlesource.com/kernel/msm \
+            kernel-msm
+
+          git clone --depth 1 --branch android-8.1.0_r38 \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 \
+            toolchain-aarch64
+
+          git clone --depth 1 --branch android-8.1.0_r38 \
+            https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9 \
+            toolchain-arm
+
+      - name: Apply headless display patch
+        run: |
+          git -C kernel-msm apply "$GITHUB_WORKSPACE/0001-sailfish-force-sim-swte.patch"
+          git -C kernel-msm diff --stat
+          git -C kernel-msm diff -- drivers/video/msm/mdss/mdss_dsi.c
+
+      - name: Configure and build kernel
+        shell: bash
+        run: |
+          set -o pipefail
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CROSS_COMPILE="$GITHUB_WORKSPACE/toolchain-aarch64/bin/aarch64-linux-android-"
+          export CROSS_COMPILE_ARM32="$GITHUB_WORKSPACE/toolchain-arm/bin/arm-linux-androideabi-"
+          export PATH="$GITHUB_WORKSPACE/toolchain-aarch64/bin:$GITHUB_WORKSPACE/toolchain-arm/bin:$PATH"
+
+          make -C kernel-msm O="$GITHUB_WORKSPACE/out" ARCH=arm64 \
+            CROSS_COMPILE="$CROSS_COMPILE" \
+            CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+            marlin_defconfig
+
+          make -C kernel-msm O="$GITHUB_WORKSPACE/out" ARCH=arm64 \
+            CROSS_COMPILE="$CROSS_COMPILE" \
+            CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+            PYTHON=python2.7 \
+            -j"$(nproc)" \
+            Image.lz4-dtb 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p artifacts
+          cp out/arch/arm64/boot/Image.lz4-dtb artifacts/
+          cd artifacts
+          sha256sum Image.lz4-dtb > SHA256SUMS
+          cp "$GITHUB_WORKSPACE/build.log" .
+          cat SHA256SUMS
+
+      - name: Upload kernel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sailfish-headless-kernel-${{ github.run_number }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
