@@ -3,6 +3,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 cd "$work"
+patch=${1:-0001-sailfish-force-sim-swte.patch}
 base=https://android.googlesource.com
 kernel=91a2acf27c31ecf2af539e9c386779363739f8e6
 cc64=8d1806968dbb6ba7fdadb2d2b9dc923cd8e3bba5
@@ -23,8 +24,9 @@ for prefix in "$CROSS_COMPILE" "$CROSS_COMPILE_ARM32"; do
   "${prefix}gcc" --version
  done
 cd kernel
-git apply --check "$root/0001-sailfish-force-sim-swte.patch"
-git apply "$root/0001-sailfish-force-sim-swte.patch"
+test -f "$root/$patch"
+git apply --check "$root/$patch"
+git apply "$root/$patch"
 make O="$work/obj" HOSTCC='gcc -fcommon' marlin_defconfig
 make O="$work/obj" HOSTCC='gcc -fcommon' -j"$(nproc)" Image.lz4-dtb
 boot="$work/obj/arch/arm64/boot"; dest="$root/artifacts"; mkdir -p "$dest"
@@ -34,4 +36,4 @@ cp "$boot/Image.lz4-dtb" "$dest/"
 cp "$boot/Image.lz4" "$dest/"
 python3 "$root/ci/split_image_lz4_dtb.py" "$dest/Image.lz4-dtb" --output-dir "$dest"
 cd "$dest"; sha256sum Image.lz4-dtb Image.lz4 kernel_dtb > SHA256SUMS
-printf 'kernel=%s\ngcc64=%s\ngcc32=%s\npatch_sha256=%s\nkernel_release=%s\n' "$kernel" "$cc64" "$cc32" "$(sha256sum "$root/0001-sailfish-force-sim-swte.patch" | cut -d' ' -f1)" "$(cat "$work/obj/include/config/kernel.release")" > manifest.txt
+printf 'kernel=%s\ngcc64=%s\ngcc32=%s\npatch_sha256=%s\nkernel_release=%s\n' "$kernel" "$cc64" "$cc32" "$(sha256sum "$root/$patch" | cut -d' ' -f1)" "$(cat "$work/obj/include/config/kernel.release")" > manifest.txt

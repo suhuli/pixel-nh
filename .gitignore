@@ -1,5 +1,6 @@
 .cache/
 artifacts/
 build-local.sh
+__pycache__/
 *.img
 *.zip

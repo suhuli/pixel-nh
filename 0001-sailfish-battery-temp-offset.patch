@@ -1,0 +1,66 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Codex <codex@local>
+Date: Wed, 25 Nov 2026 21:50:00 +0800
+Subject: [PATCH] sailfish: calibrate reported battery temperature
+
+The battery temperature sensor on this device reports an offset high and
+fluctuates by more than 10 C at a steady load. Keep the raw fuel-gauge
+reading for internal calculations, but subtract a device-tree supplied
+offset from the temperature exposed through power_supply.
+
+This keeps the existing JEITA hardware path available while allowing
+Android and userspace applications to receive a realistic temperature.
+---
+ arch/arm64/boot/dts/htc/msm8996-htc_sailfish.dtsi | 1 +
+ drivers/power/qpnp-fg.c                           | 9 +++++++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/htc/msm8996-htc_sailfish.dtsi b/arch/arm64/boot/dts/htc/msm8996-htc_sailfish.dtsi
+index 31dd055..49cc2a1 100644
+--- a/arch/arm64/boot/dts/htc/msm8996-htc_sailfish.dtsi
++++ b/arch/arm64/boot/dts/htc/msm8996-htc_sailfish.dtsi
+@@ -46,6 +46,7 @@
+ 
+ &pmi8994_fg {
+         qcom,thermal-coefficients = [97 85 62 49 5A 35];
++        qcom,batt-temp-report-offset-decidegc = <400>;
+         qcom,resume-soc = <98>;
+         qcom,warm-bat-decidegc = <470>;
+         qcom,cool-bat-decidegc = <100>;
+diff --git a/drivers/power/qpnp-fg.c b/drivers/power/qpnp-fg.c
+index 2354d93..7d85a38 100644
+--- a/drivers/power/qpnp-fg.c
++++ b/drivers/power/qpnp-fg.c
+@@ -624,6 +624,7 @@ struct fg_chip {
+ 	int			last_good_temp;
+ 	int			batt_temp_low_limit;
+ 	int			batt_temp_high_limit;
++	int			batt_temp_report_offset;
+ 	/* Validating CC_SOC */
+ 	struct work_struct	cc_soc_store_work;
+ 	struct fg_wakeup_source	cc_soc_wakeup_source;
+@@ -3447,7 +3448,8 @@ static int fg_power_get_property(struct power_supply *psy,
+ 		val->intval = chip->batt_max_voltage_uv;
+ 		break;
+ 	case POWER_SUPPLY_PROP_TEMP:
+-		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_TEMP);
++		val->intval = get_sram_prop_now(chip, FG_DATA_BATT_TEMP) -
++				chip->batt_temp_report_offset;
+ 		break;
+ 	case POWER_SUPPLY_PROP_COOL_TEMP:
+ 		val->intval = get_prop_jeita_temp(chip, FG_MEM_SOFT_COLD);
+@@ -7278,6 +7280,12 @@ static int fg_of_init(struct fg_chip *chip)
+ 
+ 	chip->use_vbat_low_empty_soc = of_property_read_bool(node,
+ 					"qcom,fg-use-vbat-low-empty-soc");
++
++	OF_READ_PROPERTY(chip->batt_temp_report_offset,
++			"batt-temp-report-offset-decidegc", rc, 0);
++	if (chip->batt_temp_report_offset < 0 ||
++			chip->batt_temp_report_offset > 1000)
++		chip->batt_temp_report_offset = 0;
+ 
+ 	OF_READ_PROPERTY(chip->batt_temp_low_limit,
+ 			"fg-batt-temp-low-limit", rc, BATT_TEMP_LOW_LIMIT);
+-- 
+2.56.0.windows.4

@@ -1,0 +1,46 @@
+name: Build sailfish battery temperature kernel
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-battery-temp.yml'
+      - 'ci/**'
+      - '0001-sailfish-battery-temp-offset.patch'
+permissions:
+  contents: read
+jobs:
+  kernel:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential bc bison flex libelf-dev libssl-dev lz4 python3 rsync
+      - name: Compile and validate kernel
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          bash ci/build.sh 0001-sailfish-battery-temp-offset.patch 2>&1 | tee artifacts/build.log
+      - name: Upload verified image and manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: sailfish-battery-temp-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifacts/Image.lz4-dtb
+            artifacts/Image.lz4
+            artifacts/kernel_dtb
+            artifacts/SHA256SUMS
+            artifacts/manifest.txt
+          if-no-files-found: error
+      - name: Preserve build log even after a compiler error
+        if: ${{ always() && hashFiles('artifacts/build.log') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: battery-temp-build-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/build.log
