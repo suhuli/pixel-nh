@@ -1,4 +1,4 @@
-From 55440a5be66c39476e541c583032feb471c1db4f Mon Sep 17 00:00:00 2001
+From 0182b720f67a82a7d98aa414a94d8b3bea247968 Mon Sep 17 00:00:00 2001
 From: Codex <codex@local>
 Date: Wed, 25 Nov 2026 18:55:56 +0800
 Subject: [PATCH] sailfish: force EA8064TG panel for headless boot
@@ -24,31 +24,31 @@ index 31dd055..22c2768 100644
  	qcom,qusb-phy-init-seq = <0xA8 0x80
  				0x63 0x84
 diff --git a/drivers/video/msm/mdss/mdss_dsi.c b/drivers/video/msm/mdss/mdss_dsi.c
-index f8eff56..2d5a7e3 100644
+index f8eff56..283a7c9 100644
 --- a/drivers/video/msm/mdss/mdss_dsi.c
 +++ b/drivers/video/msm/mdss/mdss_dsi.c
-@@ -2773,6 +2773,21 @@ static struct device_node *mdss_dsi_find_panel_of_node(
- 			       __func__, panel_name);
- 			goto end;
- 		} else {
-+			if (!strcmp(panel_name,
-+				"qcom,mdss_dsi_samsung_ea8064tg_1080p_cmd")) {
-+				pinfo->sim_panel_mode = SIM_SW_TE_MODE;
-+				pr_info("%s: forcing sailfish SIM_SW_TE_MODE\n",
-+					__func__);
-+			} else if (!strncmp(panel_name, "qcom,mdss_dsi_sim_",
-+				sizeof("qcom,mdss_dsi_sim_") - 1)) {
-+				pr_info("%s: replacing simulator panel %s with EA8064TG\n",
-+					__func__, panel_name);
-+				strlcpy(panel_name,
-+					"qcom,mdss_dsi_samsung_ea8064tg_1080p_cmd",
-+					MDSS_MAX_PANEL_LEN);
-+				pinfo->sim_panel_mode = SIM_SW_TE_MODE;
-+			}
+@@ -2767,6 +2767,21 @@ static struct device_node *mdss_dsi_find_panel_of_node(
+ 			       __func__, __LINE__);
+ 			return NULL;
+ 		}
++		if (!strcmp(panel_name,
++			"qcom,mdss_dsi_samsung_ea8064tg_1080p_cmd")) {
++			pinfo->sim_panel_mode = SIM_SW_TE_MODE;
++			pr_info("%s: forcing sailfish SIM_SW_TE_MODE\n",
++				__func__);
++		} else if (!strncmp(panel_name, "qcom,mdss_dsi_sim_",
++			sizeof("qcom,mdss_dsi_sim_") - 1)) {
++			pr_info("%s: replacing simulator panel %s with EA8064TG\n",
++				__func__, panel_name);
++			strlcpy(panel_name,
++				"qcom,mdss_dsi_samsung_ea8064tg_1080p_cmd",
++				MDSS_MAX_PANEL_LEN);
++			pinfo->sim_panel_mode = SIM_SW_TE_MODE;
++		}
 +
- 			/* extract config node name if present */
- 			str1 += i;
- 			str2 = strnstr(str1, "config", strlen(str1));
+ 		dsi_pan_node = of_find_node_by_name(mdss_node, panel_name);
+ 		if (!dsi_pan_node) {
+ 			pr_err("%s: invalid pan node \"%s\"\n",
 -- 
 2.56.0.windows.4
 
