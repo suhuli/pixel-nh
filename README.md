@@ -17,9 +17,11 @@ active when the physical panel is disconnected.
 ## Patch
 
 `0001-sailfish-force-sim-swte.patch` forces the sailfish panel into
-`SIM_SW_TE_MODE` after device-tree lookup. This avoids real panel reads and
-hardware TE waits while retaining an MDSS display that SurfaceFlinger and the
-vendor HWC may use.
+`SIM_SW_TE_MODE` after device-tree lookup. If the bootloader selects one of
+Qualcomm's `qcom,mdss_dsi_sim_*` panels, the patch replaces it with the
+EA8064TG 1080x1920 command-mode panel while retaining software TE. This avoids
+real panel reads and hardware TE waits while retaining an MDSS display that
+SurfaceFlinger and the vendor HWC may use.
 
 This is experimental. It does not modify the bootloader and cannot help if the
 bootloader stops before loading the kernel.
@@ -31,11 +33,14 @@ Open **Actions** and run the `Build sailfish headless kernel` workflow.
 The workflow uploads:
 
 - `Image.lz4-dtb`
+- `Image.lz4`
+- `kernel_dtb`
 - `SHA256SUMS`
 - `build.log`
 
-Repack the image into a suitable boot image before flashing. Never flash a bare
-`Image.lz4-dtb` directly to `boot_a`.
+`Image.lz4` and `kernel_dtb` are provided separately so they can be packed into
+boot image header v0 correctly. Never flash a bare kernel component directly
+to `boot_a`.
 
 ## CI scope and verification
 

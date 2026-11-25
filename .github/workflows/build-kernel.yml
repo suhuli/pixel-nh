@@ -33,6 +33,8 @@ jobs:
           name: sailfish-kernel-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             artifacts/Image.lz4-dtb
+            artifacts/Image.lz4
+            artifacts/kernel_dtb
             artifacts/SHA256SUMS
             artifacts/manifest.txt
           if-no-files-found: error

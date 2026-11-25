@@ -31,5 +31,7 @@ boot="$work/obj/arch/arm64/boot"; dest="$root/artifacts"; mkdir -p "$dest"
 lz4 -dc "$boot/Image.lz4" | cmp - "$boot/Image"
 python3 "$root/ci/verify-dtb.py" "$boot"
 cp "$boot/Image.lz4-dtb" "$dest/"
-cd "$dest"; sha256sum Image.lz4-dtb > SHA256SUMS
+cp "$boot/Image.lz4" "$dest/"
+python3 "$root/ci/split_image_lz4_dtb.py" "$dest/Image.lz4-dtb" --output-dir "$dest"
+cd "$dest"; sha256sum Image.lz4-dtb Image.lz4 kernel_dtb > SHA256SUMS
 printf 'kernel=%s\ngcc64=%s\ngcc32=%s\npatch_sha256=%s\nkernel_release=%s\n' "$kernel" "$cc64" "$cc32" "$(sha256sum "$root/0001-sailfish-force-sim-swte.patch" | cut -d' ' -f1)" "$(cat "$work/obj/include/config/kernel.release")" > manifest.txt
